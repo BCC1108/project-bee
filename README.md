@@ -38,6 +38,25 @@ python examples/hq3BT.py
 ## 项目结构
 
 <details>
+<summary>点击查看项目结构</summary>
+
+```
+project-bee/
+├── core/
+│   ├── __init__.py
+│   ├── strategyBook.py
+│   ├── commonFunctions.py
+│   └── plotFunction.py
+├── database/
+├── examples/
+├── livetrade/
+├── mainEntry/
+└── simplescripts/
+```
+
+</details>
+
+<details>
 <summary>点击展开完整项目结构</summary>
 
 ```
