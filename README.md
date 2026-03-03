@@ -11,44 +11,6 @@
 - **数据管理**: 使用Parquet格式存储，快速读写
 - **可视化**: 交互式回测结果图表
 
-## 系统架构
-
-```mermaid
-graph TB
-    subgraph "数据层"
-        API[交易所API]
-        DB[(Parquet数据库)]
-    end
-    
-    subgraph "核心引擎"
-        Strategy[策略引擎]
-        Backtest[回测系统]
-        Optimize[参数优化]
-    end
-    
-    subgraph "策略库"
-        HQ2[BBands策略]
-        HQ3[BBands+成交量]
-        HQ35[矩形平仓]
-        HQ4[MACD策略]
-    end
-    
-    subgraph "执行层"
-        Live[实盘交易]
-        Monitor[监控面板]
-        Risk[风险控制]
-    end
-    
-    API --> DB
-    DB --> Strategy
-    HQ2 & HQ3 & HQ35 & HQ4 --> Strategy
-    Strategy --> Backtest
-    Backtest --> Optimize
-    Optimize --> Live
-    Live --> Monitor
-    Live --> Risk
-```
-
 ## 快速开始
 
 ### 1. 环境配置
