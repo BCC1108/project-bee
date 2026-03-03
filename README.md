@@ -5,11 +5,49 @@
 ## 核心功能
 
 - **多策略支持**: BBands、MACD、BBI等技术指标策略
-- **高效回测**: 基于VectorBT的高性能回测引擎 ，也集成了Backtrader做事件驱动回测
+- **高效回测**: 基于VectorBT的高性能回测引擎，也集成了Backtrader做事件驱动回测
 - **参数优化**: 多核并行参数扫描，实时内存释放机制(基于joblib)
 - **实时交易**: 支持实时市场数据和交易执行
-- **数据管理**: 使用databaseParquet格式存储，快速读写 , 
+- **数据管理**: 使用Parquet格式存储，快速读写
 - **可视化**: 交互式回测结果图表
+
+## 系统架构
+
+```mermaid
+graph TB
+    subgraph "数据层"
+        API[交易所API]
+        DB[(Parquet数据库)]
+    end
+    
+    subgraph "核心引擎"
+        Strategy[策略引擎]
+        Backtest[回测系统]
+        Optimize[参数优化]
+    end
+    
+    subgraph "策略库"
+        HQ2[BBands策略]
+        HQ3[BBands+成交量]
+        HQ35[矩形平仓]
+        HQ4[MACD策略]
+    end
+    
+    subgraph "执行层"
+        Live[实盘交易]
+        Monitor[监控面板]
+        Risk[风险控制]
+    end
+    
+    API --> DB
+    DB --> Strategy
+    HQ2 & HQ3 & HQ35 & HQ4 --> Strategy
+    Strategy --> Backtest
+    Backtest --> Optimize
+    Optimize --> Live
+    Live --> Monitor
+    Live --> Risk
+```
 
 ## 快速开始
 
@@ -40,7 +78,7 @@ python examples/hq3BT.py
 <details>
 <summary>点击展开完整项目结构</summary>
 
-```
+```text
 project-bee/
 ├── core/                      # 核心模块
 │   ├── __init__.py            # 模块导出
@@ -71,6 +109,7 @@ project-bee/
     ├── pressureTest.py        # 压力测试
     └── supaKline.py           # K线数据获取
 ```
+
 </details>
 
 ## 内置策略
