@@ -1,21 +1,21 @@
-# Project BEE - 加密货币量化交易系统
+# Project BEE - 超轻量web3量化项目
 
 一个基于Python的加密货币量化交易系统，提供策略回测、参数优化和实时交易功能。
 
 ## 核心功能
 
 - **多策略支持**: BBands、MACD、BBI等技术指标策略
-- **高效回测**: 基于VectorBT的高性能回测引擎
-- **参数优化**: 多核并行参数扫描
+- **高效回测**: 基于VectorBT的高性能回测引擎 ，也集成了Backtrader做事件驱动回测
+- **参数优化**: 多核并行参数扫描，实时内存释放机制(基于joblib)
 - **实时交易**: 支持实时市场数据和交易执行
-- **数据管理**: Parquet格式存储，快速读写
+- **数据管理**: 使用databaseParquet格式存储，快速读写 , 
 - **可视化**: 交互式回测结果图表
 
 ## 快速开始
 
 ### 1. 环境配置
 ```bash
-git clone https://github.com/yourusername/project-bee.git
+git clone https://github.com/BCC1108/project-bee.git
 cd project-bee
 python -m venv venv
 venv\Scripts\activate  # Windows
@@ -42,34 +42,34 @@ python examples/hq3BT.py
 
 ```
 project-bee/
-├── core/                    # 核心模块
-│   ├── __init__.py         # 模块导出
-│   ├── strategyBook.py     # 策略库定义
-│   ├── commonFunctions.py  # 通用工具函数
-│   └── plotFunction.py     # 绘图功能
-├── database/               # 数据存储目录
-│   ├── jlmemory/          # 内存缓存
-│   ├── plotdatas/         # 绘图数据
-│   ├── pressuretestLogs/  # 压力测试日志
-│   ├── rowdatas/          # 原始数据
-│   └── scanerOutputs/     # 扫描输出
-├── examples/               # 示例脚本集合
-│   ├── hq3BT.py           # HQ3策略回测示例
-│   ├── hq3simuRun.py      # HQ3模拟运行
-│   ├── get_kline_data.py  # K线数据获取
-│   └── ...                # 其他示例脚本
-├── livetrade/             # 实时交易模块
-│   ├── config.py          # 配置管理
-│   ├── liveRun.py         # 实时交易运行
-│   ├── .env_example       # 环境变量模板
-│   └── .env               # 环境变量（本地）
-├── mainEntry/             # 主运行入口
-│   └── run.py             # 主回测脚本
-└── simplescripts/         # 简单脚本集合
-    ├── btBT.py           # Backtrader回测
-    ├── btVBT.py          # VectorBT回测
-    ├── pressureTest.py   # 压力测试
-    └── supaKline.py     # K线数据获取
+├── core/                      # 核心模块
+│   ├── __init__.py            # 模块导出
+│   ├── strategyBook.py        # 策略库定义
+│   ├── commonFunctions.py     # 通用工具函数
+│   └── plotFunction.py        # 绘图功能
+├── database/                  # 数据存储目录
+│   ├── jlmemory/              # 内存缓存
+│   ├── plotdatas/             # 绘图数据
+│   ├── pressuretestLogs/      # 压力测试日志
+│   ├── rowdatas/              # 原始数据
+│   └── scanerOutputs/         # 扫描输出
+├── examples/                  # 示例脚本集合
+│   ├── hq3BT.py               # HQ3策略回测示例
+│   ├── hq3simuRun.py          # HQ3模拟运行
+│   ├── get_kline_data.py      # K线数据获取
+│   └── ...                    # 其他示例脚本
+├── livetrade/                 # 实时交易模块
+│   ├── config.py              # 配置管理
+│   ├── liveRun.py             # 实时交易运行
+│   ├── .env_example           # 环境变量模板
+│   └── .env                   # 环境变量（本地）
+├── mainEntry/                 # 主运行入口
+│   └── run.py                 # 主回测脚本
+└── simplescripts/             # 简单脚本集合
+    ├── btBT.py                # Backtrader回测
+    ├── btVBT.py               # VectorBT回测
+    ├── pressureTest.py        # 压力测试
+    └── supaKline.py           # K线数据获取
 ```
 </details>
 
