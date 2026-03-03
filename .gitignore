@@ -1,28 +1,105 @@
-﻿__pycache__/
-*.pyc
-*.pyo
-*.egg-info/
-dist/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 build/
-.pytest_cache/
-.venv/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
 venv/
-.env
-.env.local
-config.ini
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
 .vscode/
 .idea/
-*.log
-.ipynb_checkpoints/
-.jupyter
-*.ipynb
-jlmemory2/
-datas/*.parquet
-output.txt
-*.csv
-results/
-cache/
-.DS_Store
-Thumbs.db
 *.swp
 *.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project specific
+database/jlmemory/
+database/jlmemory2/
+database/plotdatas/
+database/pressuretestLogs/
+database/rowdatas/
+database/scanerOutputs/
+
+# Data files
+*.parquet
+*.csv
+*.json
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+*.env.local
+*.env.*.local
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Black
+.black.cache
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/settings.json
+.vscode/launch.json
+
+# Temporary files
+temp/
+tmp/
+
+# Backtrader cerebro files
+cerebro-*
+
+# VectorBT cache
+.vbt/

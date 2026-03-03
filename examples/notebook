@@ -1,0 +1,82 @@
+# 假设 cerebro 只 add 了一个 data
+print(type(self.datas))     # <class 'list'>
+print(type(self.datas[0]))  # <class 'backtrader.feeds...'>
+print(self.data is self.datas[0])  # True
+
+# 所以下面三种等价：
+sma1 = btind.SMA(self.datas[0])
+sma2 = btind.SMA(self.data)
+sma3 = btind.SMA(self.data0)  # 注意是 data0，不是 datas0
+
+
+
+# 1. SMA（简单移动平均线）
+# 算法：过去 N 期收盘价的算术平均值
+# SMA = (P1 + P2 + ... + PN) / N
+# 用途：判断趋势方向；价格在 SMA 上方为多头，下方为空头
+# ==============================
+self.sma = btind.SMA(self.data.close, period=20)
+
+
+# 2. EMA（指数移动平均线）
+# 算法：对近期价格赋予更高权重的加权平均
+# EMA_today = α * Price_today + (1 - α) * EMA_yesterday
+# 其中 α = 2 / (N + 1)
+# 用途：比 SMA 更灵敏的趋势跟踪；常用于 MACD、动态支撑/阻力
+# ==============================
+self.ema = btind.EMA(self.data.close, period=20)
+
+# 3. ATR（平均真实波幅）
+# 算法：
+#   Step1: 计算 True Range (TR) = max(
+#            high - low,
+#           |high - prev_close|,
+#           |low - prev_close|
+#       )
+#   Step2: 对 TR 做 N 日 SMA → ATR
+# 用途：衡量市场波动性；用于动态止损（如 止损 = 入场价 - 2 * ATR）
+# 注意：需要 high, low, close 三列数据！
+# ==============================
+self.atr = btind.ATR(self.data, period=14)
+
+# 4. RSI（相对强弱指数）
+# ------------------------------
+# 算法：
+#   RS = 平均涨幅 / 平均跌幅（通常用 14 日）
+#   RSI = 100 - (100 / (1 + RS))
+# 取值范围：0 ～ 100
+# 用途：
+#   RSI > 70 → 超买（可能回调）
+#   RSI < 30 → 超卖（可能反弹）
+# 注意：在强趋势中可能长期超买/超卖，需结合趋势过滤
+# ==============================
+self.rsi = btind.RSI(self.data.close, period=14)
+
+
+#5 boll指标
+self.boll = btind.BollingerBands(
+    period=20,        # 中轨 SMA 周期，默认 20
+    devfactor=2.0     # 标准差倍数，默认 2.0
+)
+
+# 访问三条线：
+self.boll.mid    # 中轨（SMA）
+self.boll.top    # 上轨（upper band）
+self.boll.bot    # 下轨（lower band）← 注意是 bot，不是 lower！
+
+
+current_body_high = bt.Max(self.data.open, self.data.close)   # 柱体上沿
+current_body_low  = bt.Min(self.data.open, self.data.close)   # 柱体下沿
+
+buysignal = bt.And(
+    (self.data.close[-1] < self.boll.bot[-1]) ,
+    (current_body_high[0] <= self.boll.bot[-1]) ,
+    (self.data.volume[0] < self.data.volume[-1])
+)
+
+# 做空信号：前一根涨破上轨 + 当前实体未回落 + 缩量
+sellsignal = bt.And(
+    (self.data.close[-1] > self.boll.top[-1]) ,
+    (current_body_low[0] >= self.boll.top[-1]) ,
+    (self.data.volume[0] < self.data.volume[-1])
+)
