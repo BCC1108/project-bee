@@ -40,7 +40,7 @@ python examples/hq3BT.py
 <details>
 <summary>点击展开完整项目结构</summary>
 
-```text
+```
 project-bee/
 ├── core/                      # 核心模块
 │   ├── __init__.py            # 模块导出
