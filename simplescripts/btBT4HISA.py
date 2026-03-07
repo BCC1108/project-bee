@@ -25,13 +25,13 @@ resamplenum2 = 60 * 15         #K线重聚和时间，秒计算
 tradeMin = 0.01*0.001          #swapCcy * swapMin
 datafilename = 'soldata.parquet'
 
-#===此地不需要修改===
+#superTrend指标实现（基于ATR的趋势跟踪指标，具有自动调整止损功能）
 class SuperTrend(bt.Indicator):
     lines = ('supertrend', 'direction')
-    params = (('period', 10), ('multiplier', 3),)
+    params = (('period', 10), ('multiplier', 3))
 
     def __init__(self):
-        self.atr = bt.indicators.ATR(period=self.p.period)            #type: ignore
+        self.atr = bt.indicators.ATR(period=self.p.period)                   #type: ignore
         self.hl2 = (self.data.high + self.data.low) / 2.0
         self.upper = self.hl2 + self.p.multiplier * self.atr
         self.lower = self.hl2 - self.p.multiplier * self.atr
@@ -40,8 +40,8 @@ class SuperTrend(bt.Indicator):
         self.initialized = False
     def next(self):
         if not self.initialized:
-            self.lines.supertrend[0] = self.lower[0]                                   #type: ignore
-            self.lines.direction[0] = 1  # 1=多, -1=空                                 #type: ignore
+            self.lines.supertrend[0] = self.lower[0]                         #type: ignore
+            self.lines.direction[0] = 1  # 1=多, -1=空                       #type: ignore
             self.initialized = True
             return
             
@@ -52,7 +52,7 @@ class SuperTrend(bt.Indicator):
         lower = self.lower[0]
 
         if prev_dir == 1:  # 当前是多头
-            if close < upper:
+            if close < prev_st:
                 # 翻转为空头
                 self.lines.supertrend[0] = upper                             #type: ignore
                 self.lines.direction[0] = -1                                 #type: ignore
@@ -60,7 +60,7 @@ class SuperTrend(bt.Indicator):
                 # 维持多头，st 只能上移
                 self.lines.supertrend[0] = max(lower, prev_st)               #type: ignore
         else:  # 当前是空头 
-            if close > lower:
+            if close > prev_st:
                 # 翻转为多头
                 self.lines.supertrend[0] = lower                             #type: ignore
                 self.lines.direction[0] = 1                                  #type: ignore
@@ -77,33 +77,23 @@ class hqStrategy(bt.Strategy):
 
     
     def __init__(self):
-        #15min指标
-        self.boll_15min = btind.BollingerBands(self.data1, period =20 , devfactor = 2)                 #type: ignore
-        self.rsi_15min = btind.RSI(self.data1, period = 14)                                            #type: ignore
-        self.atr_15min = btind.ATR(self.data1, period = 14)                                            #type: ignore
-        self.volRation_15min = self.data1.volume / btind.SMA(self.data1.volume, period = 20)           #type: ignore
-        self.superTrend_15min = SuperTrend(self.data1, period = 7, multiplier = 2.0)                    #type: ignore
-        
         #1h指标
-        self.boll_60min= btind.BollingerBands(self.data2, period =20 , devfactor = 2)                  #type: ignore
-        self.rsi_60min = bt.ind.RSI(self.data2, period=14)                                             #type: ignore
-        self.vol_ratio_60 = self.data2.volume / bt.ind.SMA(self.data2.volume, period=20)               #type: ignore
+        self.boll_60= btind.BollingerBands(self.data60, period =20 , devfactor = 2)                     #type: ignore
+        self.rsi_60 = bt.ind.RSI(self.data60, period=14)                                                #type: ignore
+        self.volRatio_60 = self.data60.volume / bt.ind.SMA(self.data60.volume, period=20)               #type: ignore
         # RAVI = (SMA(short) - SMA(long)) / SMA(long) * 100
-        sma_short = bt.ind.SMA(self.data2.close, period=7)                                             #type: ignore
-        sma_long = bt.ind.SMA(self.data2.close, period=65)                                             #type: ignore
+        sma_short = bt.ind.SMA(self.data60.close, period=7)                                             #type: ignore
+        sma_long = bt.ind.SMA(self.data60.close, period=65)                                             #type: ignore
         self.ravi_60 = (sma_short - sma_long) / sma_long * 100
-        self.st_60 = SuperTrend(self.data2, period= 10 , multiplier=2.5)                               #type: ignore
+        self.st_60 = SuperTrend(self.data60, period= 10 , multiplier=2.5)                               #type: ignore
+        self.atr_60 = bt.ind.ATR(self.data60, period=10)                                                #type: ignore
         
         #辅助变量
         self.order = None 
         self.win_trades = 0
         self.total_trades = 0
-        self.data1_len = 0
-        
-        self.buysignal = False
-        self.sellsignal = False
-        self.cLongsig = False
-        self.cShortsig = False    
+        self.data60_len = 0  
+    
     
     def pr(self, prtxt , dt=None):                             # dt = None  如果不传入参数，就自动使用当前k线的日期
         dt = dt or self.datas[0].datetime.datetime(0)          #self.data.datetime[0] 是完整的“日期+时间”（精确到秒/毫秒），而 self.data.datetime.date(0) 只取“日期部分”（年-月-日），去掉时分秒。
@@ -135,95 +125,99 @@ class hqStrategy(bt.Strategy):
                 self.win_trades += 1
         if self.total_trades > 0:
             win_rate = self.win_trades / self.total_trades
-            self.pr('实时胜率%.2f%% , %d/%d'%(win_rate*100 , self.win_trades , self.total_trades))
+            self.pr('实时胜率%.2f%%'%(win_rate*100))
     
     def next(self): 
         #self.pr(f"data_idx={len(self.data)}, total={self.data.buflen()}")
         pbar.update(1)
-
-        if len(self.data1) < 2:
+        
+        if len(self.data60) < 60:   #确保有足够的历史数据来计算指标
             return
         
         if self.order:
             return
+    
+        #趋势计算
+        condition1 =(
+           (self.st_60.lines.direction[-2] == 1) and               #type: ignore 
+           (self.st_60.lines.direction[-1] == 1) and               #type: ignore
+           (self.st_60.lines.direction[0] == 1) and                #type: ignore
+           (self.ravi_60[0] > 0.01)                                #type: ignore
+        ) 
+        condition2 = (
+            (self.st_60.lines.direction[-2] == -1) and              #type: ignore
+            (self.st_60.lines.direction[-1] == -1) and              #type: ignore
+            (self.st_60.lines.direction[0] == -1) and               #type: ignore
+            (self.ravi_60[0] < -0.01)                               #type: ignore
+        )
         
-        #市场动态计算
-        main_thread = 0
-        if self.st_60.lines.direction[-1] == 1 and self.ravi_60[0] > 1.0:                   # 60分钟周期多头趋势              #type: ignore
-            main_thread = 1 
-        elif self.st_60.lines.direction[-1] == -1 and self.ravi_60[0] < -1.0:               # 60分钟周期空头趋势              #type: ignore
-            main_thread = -1
+        up_trend = condition1 
+        down_trend = condition2
+        upNdown = not (up_trend or down_trend)
         
-        sub_thread = self.superTrend_15min.lines.direction[0]                               # 15分钟周期趋势                  #type: ignore
-        momentum = 1 if self.rsi_60min[0] > 50 else (-1 if self.rsi_60min[0] < 50 else 0 )  # 15分钟周期动量
-        
-        final_score = 0.6 * main_thread + 0.3 * sub_thread + 0.1 * momentum
-        
-        #市场分类
-        up_trend = final_score > 0.5           #多头
-        down_trend = final_score < -0.5         #空头
-        upNdown = abs(final_score) <= 0.5        #震荡
-        
+        #买卖信号
         buysignal = False
         sellsignal = False
         
-        
-        #入场信号
+        #入场
         if upNdown:
             buysignal = (
-                self.data1.low[-1] < self.boll_15min.lines.bot[-1] and      #下破下轨    #type: ignore
-                self.data1.close[0] > self.data1.open[0] and                #绿线
-                self.volRation_15min[0] < 0.8                               #缩量
+                self.data60.low[0] < self.boll_60.lines.bot[0] and         #下破下轨           #type: ignore
+                self.rsi_60[0] < 30                               and      #RSI进入超卖（<30） #type: ignore
+                self.volRatio_60[0] < 0.5                                  #缩量
             )
                 
 
             sellsignal = (
-                self.data1.high[-1] > self.boll_15min.lines.top[-1] and     #上破上轨    #type: ignore
-                self.data1.close[0] < self.data1.open[0] and                #红线
-                self.volRation_15min[0] < 0.8                               #缩量     
+                self.data60.high[0] > self.boll_60.lines.top[0] and        #上破上轨            #type: ignore
+                self.rsi_60[0] > 70                                and     #RSI进入超买（>70）  #type: ignore
+                self.volRatio_60[0] < 0.5                                  #缩量     
                 )
         
         elif up_trend:
             buysignal = (
-                self.superTrend_15min.lines.direction[0] == 1 and                           # 15m 仍为多头                     #type: ignore
-                self.data1.close[-1] > self.superTrend_15min.lines.supertrend[-1] and       # 前一根在ST上方                   #type: ignore
-                self.data1.low[0] <= self.superTrend_15min.lines.supertrend[0] * 1.005 and  # 当前低点接近ST（允许0.5%滑点）    #type: ignore
-                self.data1.close[0] > self.data1.open[0] and                                # 收阳确认
-                self.rsi_15min[0] > 45                                                      # RSI未进入超卖（>45）
-            )
+                self.st_60.lines.direction[0] == 1 and                     # 当前处于多头趋势（绿线）   #type: ignore
+                self.data60.low[0] < self.st_60.lines.supertrend[0] and    # 盘中跌破绿线               #type: ignore
+                self.data60.close[0] > self.st_60.lines.supertrend[0] and  # 收盘站回线上（假跌破）     #type: ignore
+                self.rsi_60[0] > 50 and self.rsi_60[-1] <= 50 and          # RSI 上穿 50                 #type: ignore
+                self.volRatio_60[0] < 0.8)                                 # 量比 < 0.8（缩量）          #type: ignore
+                                                                          
+            
         
         elif down_trend:
             sellsignal = (
-                self.superTrend_15min.lines.direction[0] == -1 and                          # 15m 仍为空头                    #type: ignore
-                self.data1.close[-1] < self.superTrend_15min.lines.supertrend[-1] and       # 前一根在ST下方                  #type: ignore
-                self.data1.high[0] >= self.superTrend_15min.lines.supertrend[0] * 0.995 and # 当前高点接近ST                  #type: ignore
-                self.data1.close[0] < self.data1.open[0] and                                # 收阴确认
-                self.rsi_15min[0] < 55                                                      # RSI未进入超买（<55）
+                self.st_60.lines.direction[0] == -1 and                    # 当前处于空头趋势（红线）   #type: ignore
+                self.data60.high[0] > self.st_60.lines.supertrend[0] and   # 盘中突破红线               #type: ignore
+                self.data60.close[0] < self.st_60.lines.supertrend[0] and  # 收盘压回线下（假突破）     #type: ignore
+                self.rsi_60[0] < 50 and self.rsi_60[-1] >= 50 and          # RSI 下穿 50                 #type: ignore
+                self.volRatio_60[0] < 0.8                                  # 量比 < 0.8（缩量）          #type: ignore                                                     
             )
         
         
         #出场信号
         cLongsig = False
         cShortsig = False
+        
+        slMulti = 1.5 if upNdown else 2.0
         pos = self.getposition(self.data)
         
         if pos.size > 0:
             if upNdown:
-                cLongsig = (self.data1.close[-1] < self.boll_15min.lines.mid[-1]) and (self.data1.close[0] > self.boll_15min.lines.mid[0])          #type: ignore
+                cLongsig = (self.data60.close[-1] < self.boll_15min.lines.mid[-1]) and (self.data60.close[0] > self.boll_15min.lines.mid[0])          #type: ignore
                 
             else:
                 cLongsig = (
                     self.superTrend_15min.lines.direction[0] == -1 or                                                                         #type: ignore
-                    self.data1.close[0] < self.superTrend_15min.lines.supertrend[0]                                                           #type: ignore
+                    self.data60.close[0] < self.superTrend_15min.lines.supertrend[0]                                                           #type: ignore
                 )
         elif pos.size < 0:
             if upNdown:
-                cShortsig = (self.data1.close[-1] > self.boll_15min.lines.mid[-1]) and (self.data1.close[0] < self.boll_15min.lines.mid[0])          #type: ignore
+                cShortsig = (self.data60.close[-1] > self.boll_15min.lines.mid[-1]) and (self.data60.close[0] < self.boll_15min.lines.mid[0])          #type: ignore
                 
             else:
                 cShortsig = (
                     self.superTrend_15min.lines.direction[0] == 1 or                                                                         #type: ignore
-                    self.data1.close[0] > self.superTrend_15min.lines.supertrend[0]                                                           #type: ignore
+                    self.data60.close[0] > self.superTrend_15min.lines.supertrend[0]                                                           #type: ignore
                 )
             
         
@@ -253,29 +247,29 @@ class hqStrategy(bt.Strategy):
                         self.pr(f'空头止损 @ {stop_loss_price:.2f}')
                         self.order = self.buy() 
                    
-        if len(self.data1) > self.data1_len:
-            self.data1_len = len(self.data1)
+        if len(self.data60) > self.data60_len:
+            self.data60_len = len(self.data60)
             
             if pos.size == 0:
                 if buysignal:                                                        
-                    self.pr('看多 开多仓： %.2f' %self.data1.close[0])
+                    self.pr('看多 开多仓： %.2f' %self.data60.close[0])
                     self.order = self.buy()
                     
                 elif sellsignal:
-                    self.pr('看空 开空仓： %.2f' %self.data1.close[0])
+                    self.pr('看空 开空仓： %.2f' %self.data60.close[0])
                     self.order = self.sell()
             else:
                 if pos.size > 0 and cLongsig:
                 #if pos.size > 0 and sellsignal:
-                    self.pr('长头平仓：%.2f' % self.data1.close[0])
+                    self.pr('长头平仓：%.2f' % self.data60.close[0])
                     self.order = self.close()
                     ##self.order = self.sell()
                          
                 if pos.size < 0 and cShortsig:
                 #if pos.size < 0 and buysignal:
-                    self.pr('短头平仓：%.2f' % self.data1.close[0])
+                    self.pr('短头平仓：%.2f' % self.data60.close[0])
                     self.order = self.close()
-                    #self.pr('反手开多：%.2f' % self.data1.close[0])
+                    #self.pr('反手开多：%.2f' % self.data60.close[0])
                     #self.order = self.buy()
                     
                    
@@ -321,14 +315,7 @@ if __name__ == '__main__':
         data,
         timeframe = bt.TimeFrame.Seconds,                              #type: ignore
         compression = resamplenum,
-        name = 'data2'
-    )
-    
-    cerebro.resampledata(
-        data,
-        timeframe = bt.TimeFrame.Seconds,                              #type: ignore
-        compression = resamplenum2,
-        name = 'data1'
+        name = 'data60'
     )
     
     cerebro.broker.setcash(10000)

@@ -75,7 +75,7 @@ class Strategy():
             window = self.params.get('window' , 20)
             stddev = self.params.get('stddev' , 2)
             bandwithmax = self.params.get('bandwidthmax' , 0.2)
-            bandwithmin = self.params.get('bandwidthmin' , 0.05)
+            bandwithmin = self.params.get('bandwidthmin' , 0.06)
             
             #indicators might be used will be defined here
             bbands = vbt.BBANDS.run(dfc['close'],window=window,alpha=stddev)           

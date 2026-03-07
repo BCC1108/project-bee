@@ -45,13 +45,13 @@ def make_df(datafilename):
     df.rename(columns={'volSWAP': 'volume'} , inplace = True)
     #df = df[::30]
     #df = df[df['datetime'] >= (df['datetime'].max() - pd.Timedelta(days=80))]
+    df.set_index('datetime' , inplace = True)
     print(df)
     return df
 
 
 '''======重采样df函数===='''
 def resampledf(df: pd.DataFrame, resampleperiod: str) -> pd.DataFrame:
-    df.set_index('datetime' , inplace = True)
     dfc = df.resample(resampleperiod).agg({
         'open': 'first',
         'high': 'max',
